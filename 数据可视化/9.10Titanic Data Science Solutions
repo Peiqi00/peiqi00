@@ -1,1 +1,78 @@
+kaggle比赛泰坦尼克号优秀项目翻译：https://zhuanlan.zhihu.com/p/35434136
+kaggle入门（python数据处理）：https://blog.csdn.net/JasonZhangOO/article/details/69053487?utm_source=blogxgwz7
 
+# data analysis and wrangling
+import pandas as pd
+import numpy as np
+import random as rnd
+
+# visualization
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+# machine learning
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC, LinearSVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import Perceptron
+from sklearn.linear_model import SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+train_df = pd.read_csv('../input/train.csv') # pd.read_csv作用：将csv文件读入并转化为数据框形式
+test_df = pd.read_csv('../input/test.csv')
+combine = [train_df, test_df] # 将这些数据集组合在一起，以对两个数据集运行某些操作
+
+print(train_df.columns.values) # 打印训练数据每列的值
+
+# preview the data
+train_df.head() # 在用Pandas读取数据之后，我们往往想要观察一下数据读取是否准确，这就要用到Pandas里面的head( )函数，用head( )函数只能读取前五行数据
+
+train_df.tail() # 与head()函数类似，默认是取dataframe中的最后五行
+
+train_df.info()
+print('_'*40)
+test_df.info() # info()函数用于打印DataFrame的简要摘要，显示有关DataFrame的信息，包括索引的数据类型dtype和列的数据类型dtype，非空值的数量和内存使用情况
+
+train_df.describe() # 对于数值数据，结果的索引将包括计数，平均值，标准差，最小值，最大值以及较低的百分位数和50。默认情况下，较低的百分位数为25，较高的百分位数为75.50百分位数与中位数相同
+# Review survived rate using `percentiles=[.61, .62]` knowing our problem description mentions 38% survival rate.
+# Review Parch distribution using `percentiles=[.75, .8]`
+# SibSp distribution `[.68, .69]`
+# Age and Fare `[.1, .2, .3, .4, .5, .6, .7, .8, .9, .99]`
+
+train_df.describe(include=['O']) # include，这个参数默认是只计算数值型特征的统计量，当输入include=['O']，会计算离散型变量的统计特征
+                                 # df.describe(include=‘all’)  此外传参数是‘all’的时候会把数值型和离散型特征的统计都进行显示
+                                 # .describe(percentiles=[.2,.75, .8]) percentiles,这个参数可以设定数值型特征的统计量，默认是[.25, .5, .75],也就是返回25%，50%，75%数据量时的数字，但是这个可以修改的
+
+#————通过groupby找出该特征与目标之间的关联————
+
+train_df[['Pclass', 'Survived']].groupby(['Pclass'], as_index=False).mean().sort_values(by='Survived', ascending=False) 
+# as_index=True时，“as_index”就类似表示将组标签（类似“主键”）作为索引；as_index=False时，索引为0，1，2，3…
+# .mean()计算平均值
+# pandas中的sort_values()函数，可以将数据集依照某个字段中的数据进行排序，该函数即可根据指定列数据也可根据指定行的数据排序
+# ascending：布尔型，True则升序；False则降序
+
+train_df[["Sex", "Survived"]].groupby(['Sex'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+train_df[["SibSp", "Survived"]].groupby(['SibSp'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+train_df[["Parch", "Survived"]].groupby(['Parch'], as_index=False).mean().sort_values(by='Survived', ascending=False)
+
+#————通过可视化工具，可以查看到一些特征，比如各年龄段和生存的相关性————
+g = sns.FacetGrid(train_df, col='Survived')
+g.map(plt.hist, 'Age', bins=20)
+
+# grid = sns.FacetGrid(train_df, col='Pclass', hue='Survived')
+grid = sns.FacetGrid(train_df, col='Survived', row='Pclass', size=2.2, aspect=1.6)
+grid.map(plt.hist, 'Age', alpha=.5, bins=20)
+grid.add_legend();
+
+# grid = sns.FacetGrid(train_df, col='Embarked')
+grid = sns.FacetGrid(train_df, row='Embarked', size=2.2, aspect=1.6)
+grid.map(sns.pointplot, 'Pclass', 'Survived', 'Sex', palette='deep')
+grid.add_legend()
+
+# grid = sns.FacetGrid(train_df, col='Embarked', hue='Survived', palette={0: 'k', 1: 'w'})
+grid = sns.FacetGrid(train_df, row='Embarked', col='Survived', size=2.2, aspect=1.6)
+grid.map(sns.barplot, 'Sex', 'Fare', alpha=.5, ci=None)
+grid.add_legend()
