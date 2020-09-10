@@ -59,13 +59,15 @@ train_df[["SibSp", "Survived"]].groupby(['SibSp'], as_index=False).mean().sort_v
 train_df[["Parch", "Survived"]].groupby(['Parch'], as_index=False).mean().sort_values(by='Survived', ascending=False)
 
 #————通过可视化工具，可以查看到一些特征，比如各年龄段和生存的相关性————
-g = sns.FacetGrid(train_df, col='Survived')
+g = sns.FacetGrid(train_df, col='Survived') 
 g.map(plt.hist, 'Age', bins=20)
+# 先sns.FacetGrid画出轮廓；然后用map填充内容
+# 关于seaborn可视化之FacetGrid()的网页链接：https://www.jianshu.com/p/6a210c2ad3ad
 
-# grid = sns.FacetGrid(train_df, col='Pclass', hue='Survived')
+# grid = sns.FacetGrid(train_df, col='Pclass', hue='Survived') # 设置参数hue，分类显示
 grid = sns.FacetGrid(train_df, col='Survived', row='Pclass', size=2.2, aspect=1.6)
 grid.map(plt.hist, 'Age', alpha=.5, bins=20)
-grid.add_legend();
+grid.add_legend(); # 加注释
 
 # grid = sns.FacetGrid(train_df, col='Embarked')
 grid = sns.FacetGrid(train_df, row='Embarked', size=2.2, aspect=1.6)
@@ -76,3 +78,57 @@ grid.add_legend()
 grid = sns.FacetGrid(train_df, row='Embarked', col='Survived', size=2.2, aspect=1.6)
 grid.map(sns.barplot, 'Sex', 'Fare', alpha=.5, ci=None)
 grid.add_legend()
+
+#————基于我们的假设和判断我们现在要删除Cabin和Ticket两个特征————
+print("Before", train_df.shape, test_df.shape, combine[0].shape, combine[1].shape)
+
+train_df = train_df.drop(['Ticket', 'Cabin'], axis=1)
+test_df = test_df.drop(['Ticket', 'Cabin'], axis=1)
+combine = [train_df, test_df]
+
+"After", train_df.shape, test_df.shape, combine[0].shape, combine[1].shape
+
+#————我们决定保留Tittle特征在训练模型中————
+for dataset in combine:
+    dataset['Title'] = dataset.Name.str.extract(' ([A-Za-z]+)\.', expand=False) # str.extract()，可用正则从字符数据中抽取匹配的数据，只返回第一个匹配的数据
+    # Series.str.extract(pat, flags=0, expand=None)
+    # 参数:
+    # pat : 字符串或正则表达式
+    # flags : 整型,
+    # expand : 布尔型,是否返回DataFrame
+    # Returns:
+    # 数据框dataframe/索引index
+
+pd.crosstab(train_df['Title'], train_df['Sex']) # 交叉表，交叉表是用于统计分组频率的特殊透视表
+
+#————我们可以用一个更常见的名称替换许多标题或者将它们分类为Rare————
+for dataset in combine:
+    dataset['Title'] = dataset['Title'].replace(['Lady', 'Countess','Capt', 'Col',\
+ 	'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare')
+
+    dataset['Title'] = dataset['Title'].replace('Mlle', 'Miss')
+    dataset['Title'] = dataset['Title'].replace('Ms', 'Miss')
+    dataset['Title'] = dataset['Title'].replace('Mme', 'Mrs')
+    
+train_df[['Title', 'Survived']].groupby(['Title'], as_index=False).mean()
+
+#————我们可以把类别头衔转化为序列特征————
+title_mapping = {"Mr": 1, "Miss": 2, "Mrs": 3, "Master": 4, "Rare": 5}
+for dataset in combine:
+    dataset['Title'] = dataset['Title'].map(title_mapping)
+    dataset['Title'] = dataset['Title'].fillna(0)
+
+train_df.head()
+
+#————现在我们能在训练集和测试集上安全的删除Name特征。在训练集上我们也不需要PassengerId特征————
+train_df = train_df.drop(['Name', 'PassengerId'], axis=1)
+test_df = test_df.drop(['Name'], axis=1)
+combine = [train_df, test_df]
+train_df.shape, test_df.shape
+
+#————现在我们可以把特征从字符串转换为数值特征，因为大部分的模型算法都是需要数值特征————
+#————我们先把Sex特征（female = 1，male = 0）转化为新的Gender特征————
+for dataset in combine:
+    dataset['Sex'] = dataset['Sex'].map({"female":1,"male":0}).astype(int)
+
+train_df.head()
